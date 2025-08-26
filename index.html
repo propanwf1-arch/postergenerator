@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login / Sign‑up</title>
+  <style>
+    :root { --primary:#5b3cc4; --bg:#0f1221; --card:#151a30; --muted:#99a1b3; }
+    body{margin:0;font-family:system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Helvetica, Arial, sans-serif; background:linear-gradient(180deg,var(--bg),#0a0c17); color:#fff; display:flex; align-items:center; justify-content:center; min-height:100vh}
+    .card{max-width:440px;width:100%;background:var(--card);padding:20px;border-radius:14px;border:1px solid #232a45;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+    h2{margin:0 0 8px}
+    label{display:block;margin-top:12px;font-size:14px;color:#cfd6ea}
+    input{width:100%;padding:12px 14px;margin-top:6px;border-radius:10px;border:1px solid #2a335a;background:#0f1428;color:#fff; box-sizing: border-box;}
+    button{margin-top:16px;padding:12px 14px;width:100%;border:none;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer}
+    button:hover{background:#6a48e0;}
+    .msg{margin-top:10px;font-size:14px; min-height: 1.2em;}
+    .msg.err{color:#ff9a9a}
+    .msg.ok{color:#8af2b3}
+    .link{color:#b79cff;text-decoration:underline;cursor:pointer}
+    p {font-size: 14px; color: var(--muted); text-align: center;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 id="form-title">Login</h2>
+    <div id="msg" class="msg"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <label for="login-wa">WhatsApp</label>
+      <input id="login-wa" placeholder="62812xxxxxxx" autocomplete="tel" />
+      <label for="login-pass">Password</label>
+      <input id="login-pass" type="password" maxlength="12" autocomplete="current-password" />
+      <button id="btn-login">Login</button>
+      <p>Belum punya akun? <span class="link" onclick="showSignup()">Daftar / Sign‑up</span></p>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signup-form" style="display:none">
+      <label for="su-nama">Nama</label>
+      <input id="su-nama" autocomplete="name" />
+      <label for="su-email">Email</label>
+      <input id="su-email" type="email" autocomplete="email" />
+      <label for="su-wa">WhatsApp</label>
+      <input id="su-wa" autocomplete="tel" placeholder="62812xxxxxxx" />
+      <label for="su-pass">Password</label>
+      <input id="su-pass" type="password" maxlength="12" autocomplete="new-password" />
+      <button id="btn-signup">Daftar</button>
+      <p>Sudah punya akun? <span class="link" onclick="showLogin()">Login / Sign‑in</span></p>
+    </div>
+  </div>
+
+<script>
+// =================================================================================
+// PENTING: Pastikan Anda menggunakan URL Web App yang BENAR dan TERBARU
+// dari hasil "New deployment" di Google Apps Script.
+// =================================================================================
+const WEB_APP_URL = "PASTE_URL_WEB_APP_BARU_ANDA_DI_SINI";
+
+const POST_HEADERS = {'Content-Type':'text/plain;charset=utf-8'};
+
+// --- Fungsi Validasi ---
+function isValidEmail(email){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email).toLowerCase())}
+function isValidWA(wa){return /^62\d{7,15}$/.test(String(wa))}
+function isStrongPass(pw){return !!pw && pw.length>=8 && pw.length<=12 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)}
+
+// --- Fungsi UI ---
+function showMsg(t,c){const m=document.getElementById('msg'); m.textContent=t; m.className='msg '+(c||'');}
+function showSignup(){document.getElementById('login-form').style.display='none';document.getElementById('signup-form').style.display='block';document.getElementById('form-title').innerText='Sign‑up'; showMsg('', '');}
+function showLogin(){document.getElementById('signup-form').style.display='none';document.getElementById('login-form').style.display='block';document.getElementById('form-title').innerText='Login'; showMsg('', '');}
+
+// --- Fungsi API Call ---
+async function postPlain(obj){
+  // ===========================================================================
+  // BARIS DEBUGGING: Baris ini akan mencatat data yang akan dikirim ke
+  // console log browser (buka dengan F12).
+  console.log("Data to be sent:", JSON.stringify(obj));
+  // ===========================================================================
+
+  if (WEB_APP_URL === "https://script.google.com/macros/s/AKfycbyNH-UnV5AQbGN9WBvNmdayGyZOwUDPk-VAZT9PdnjSPkbpWK5y8bF6Uue2rmN5RImx/exec") {
+    showMsg('Error: WEB_APP_URL belum diatur di dalam kode HTML.', 'err');
+    throw new Error('WEB_APP_URL is not set.');
+  }
+  
+  const res = await fetch(WEB_APP_URL, { method:'POST', headers: POST_HEADERS, body: JSON.stringify(obj) });
+  const text = await res.text();
+  try{ return JSON.parse(text); } catch{ throw new Error(text || 'Non-JSON response from server'); }
+}
+
+// --- Event Listener untuk LOGIN ---
+document.getElementById('btn-login').addEventListener('click', async ()=>{
+  const wa = document.getElementById('login-wa').value.trim();
+  const pw = document.getElementById('login-pass').value;
+  if(!isValidWA(wa)) return showMsg('Format WhatsApp harus mulai 62 dan hanya angka.','err');
+  if(!pw) return showMsg('Password tidak boleh kosong.', 'err');
+  
+  showMsg('Logging in...', '');
+  try{
+    const data = await postPlain({action:'login', whatsapp:wa, password:pw});
+    if(data.success){
+      showMsg(`Login berhasil. Status: ${data.status}.`, 'ok');
+    } else {
+      showMsg(data.message || 'Login gagal.', 'err');
+    }
+  }catch(e){ showMsg('Error: '+ e.message, 'err'); }
+});
+
+// --- Event Listener untuk SIGNUP ---
+document.getElementById('btn-signup').addEventListener('click', async ()=>{
+  const nama = document.getElementById('su-nama').value.trim();
+  const email= document.getElementById('su-email').value.trim();
+  const wa   = document.getElementById('su-wa').value.trim();
+  const pw   = document.getElementById('su-pass').value;
+
+  if(nama.length<3) return showMsg('Nama minimal 3 karakter.','err');
+  if(!isValidEmail(email)) return showMsg('Email tidak valid.','err');
+  if(!isValidWA(wa)) return showMsg('WhatsApp harus mulai 62 dan hanya angka.','err');
+  if(!isStrongPass(pw)) return showMsg('Password: 8–12 karakter, kombinasi huruf besar, kecil, angka, & simbol.','err');
+  
+  showMsg('Mendaftarkan...', '');
+  try{
+    const data = await postPlain({action:'signup', nama, email, whatsapp:wa, password:pw});
+    if(data.success){
+      showMsg(`Akun berhasil dibuat. Silakan login.`, 'ok');
+      showLogin();
+      document.getElementById('login-wa').value = wa;
+      document.getElementById('login-pass').value = "";
+    } else {
+      showMsg(data.message || 'Gagal daftar.', 'err');
+      if(data.redirectTo==='login') showLogin();
+    }
+  }catch(e){ showMsg('Error: '+ e.message, 'err'); }
+});
+</script>
+</body>
+</html>
